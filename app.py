@@ -11,104 +11,129 @@ from datetime import datetime
 import pandas as pd
 import os
 import glob
-import html  # <--- Added to fix broken layouts caused by special characters
+import html
 
 # ==========================================
-# 0. CONFIG & CSS
+# 0. CONFIG & THEME LOGIC
 # ==========================================
 st.set_page_config(page_title="Twitter Archiver", page_icon="🐦", layout="wide")
 
-st.markdown("""
+# --- THEME TOGGLE ---
+with st.sidebar:
+    st.header("🎨 Appearance")
+    is_dark_mode = st.toggle("Dark Mode", value=True)
+
+if is_dark_mode:
+    theme = {
+        "bg": "#000000",
+        "border": "#2f3336",
+        "text_main": "#e7e9ea",
+        "text_sec": "#71767b",
+        "hover": "#080808",
+        "footer_border": "#2f3336"
+    }
+else:
+    theme = {
+        "bg": "#ffffff",
+        "border": "#cfd9de",
+        "text_main": "#0f1419",
+        "text_sec": "#536471",
+        "hover": "#f7f9f9",
+        "footer_border": "#eff3f4"
+    }
+
+st.markdown(f"""
 <style>
-    /* X.com Dark Theme Card */
-    .tweet-card {
-        background-color: #000000;
-        border: 1px solid #2f3336;
+    .tweet-card {{
+        background-color: {theme['bg']};
+        border: 1px solid {theme['border']};
         border-radius: 12px;
         padding: 12px 16px;
         margin-bottom: 12px;
-        color: #e7e9ea;
+        color: {theme['text_main']};
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    .retweet-context {
+        transition: background-color 0.2s;
+    }}
+    .tweet-card:hover {{
+        background-color: {theme['hover']};
+    }}
+    
+    .retweet-context {{
         font-size: 13px;
-        color: #71767b;
+        color: {theme['text_sec']};
         margin-bottom: 8px;
         display: flex;
         align-items: center;
         gap: 5px;
         font-weight: bold;
-    }
-
-    .tweet-header {
+    }}
+    
+    .tweet-header {{
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         font-size: 15px;
-        color: #71767b;
+        color: {theme['text_sec']};
         margin-bottom: 4px;
-    }
-
-    .tweet-author-block {
+    }}
+    
+    .tweet-author-block {{
         display: flex;
         gap: 4px;
         flex-wrap: wrap;
-    }
-
-    .tweet-author {
+    }}
+    
+    .tweet-author {{
         font-weight: bold;
-        color: #e7e9ea;
+        color: {theme['text_main']};
         text-decoration: none;
-    }
-    .tweet-handle {
-        color: #71767b;
-    }
-
-    .tweet-text {
+    }}
+    .tweet-handle {{
+        color: {theme['text_sec']};
+    }}
+    
+    .tweet-text {{
         margin-top: 4px;
         margin-bottom: 8px;
         font-size: 15px;
         line-height: 20px;
-        white-space: pre-wrap; /* Preserves newlines */
-        color: #e7e9ea;
-    }
-
-    .badges-row {
+        white-space: pre-wrap; 
+        color: {theme['text_main']};
+    }}
+    
+    .badges-row {{
         margin-top: 8px;
         margin-bottom: 8px;
         display: flex;
         gap: 8px;
-    }
-    .badge {
+    }}
+    .badge {{
         padding: 2px 8px;
         border-radius: 12px;
         font-size: 11px;
         font-weight: bold;
-    }
-    .badge-media { border: 1px solid #1d9bf0; color: #1d9bf0; }
-    .badge-reply { border: 1px solid #71767b; color: #71767b; }
-
-    /* ID Footer */
-    .tweet-footer {
-        border-top: 1px solid #2f3336;
+    }}
+    .badge-media {{ border: 1px solid #1d9bf0; color: #1d9bf0; }}
+    .badge-reply {{ border: 1px solid {theme['text_sec']}; color: {theme['text_sec']}; }}
+    
+    .tweet-footer {{
+        border-top: 1px solid {theme['footer_border']};
         padding-top: 8px;
         margin-top: 8px;
         font-size: 12px;
-        color: #536471;
+        color: {theme['text_sec']};
         font-family: monospace;
         text-align: right;
-    }
-
-    a.view-link {
+    }}
+    
+    a.view-link {{
         color: #1d9bf0;
         text-decoration: none;
         font-size: 14px;
-    }
-    a.view-link:hover { text-decoration: underline; }
+    }}
+    a.view-link:hover {{ text-decoration: underline; }}
 </style>
 """, unsafe_allow_html=True)
-
 
 # ==========================================
 # 1. HELPER FUNCTIONS
@@ -123,7 +148,6 @@ def connect_to_chrome():
     except Exception as e:
         return None
 
-
 def parse_twitter_date(date_str):
     if not date_str or date_str == "Unknown": return None
     try:
@@ -131,21 +155,18 @@ def parse_twitter_date(date_str):
     except:
         return None
 
-
 def load_json_files():
     files = glob.glob("*_archive.json")
     files.sort(key=os.path.getmtime, reverse=True)
     return files
 
-
 # ==========================================
 # 2. SCRAPING ENGINE
 # ==========================================
-def run_scraper(driver, target_username, mode, search_query, limit_type, max_count, stop_date, progress_bar,
-                status_text):
+def run_scraper(driver, target_username, mode, search_query, limit_type, max_count, stop_date, progress_bar, status_text):
     target_username = target_username.replace("@", "").strip()
     autosave_file = f"autosave_{target_username}.json"
-
+    
     if mode == "Keyword Search":
         encoded_query = f"from:{target_username} {search_query}"
         url = f"https://x.com/search?q={encoded_query}&src=typed_query&f=live"
@@ -163,10 +184,11 @@ def run_scraper(driver, target_username, mode, search_query, limit_type, max_cou
 
     tweets = {}
     start_time = time.time()
+    consecutive_no_data = 0  # <--- THIS WAS MISSING
     keep_scrolling = True
-
+    
     while keep_scrolling:
-        if time.time() - start_time > 45:
+        if time.time() - start_time > 45: 
             st.warning("Timeout: No new tweets found for 45s.")
             break
 
@@ -182,31 +204,26 @@ def run_scraper(driver, target_username, mode, search_query, limit_type, max_cou
 
                 if tweet_id in tweets: continue
 
-                try:
-                    text = a.find_element(By.XPATH, './/div[@data-testid="tweetText"]').text
-                except:
-                    text = ""
+                try: text = a.find_element(By.XPATH, './/div[@data-testid="tweetText"]').text
+                except: text = ""
 
-                try:
+                try: 
                     time_tag = a.find_element(By.TAG_NAME, "time").get_attribute("datetime")
                     tweet_date = parse_twitter_date(time_tag)
-                except:
+                except: 
                     time_tag = "Unknown"
                     tweet_date = None
-
+                
                 # Flags
                 is_reply = False
                 try:
                     if len(a.find_elements(By.XPATH, ".//div[contains(text(), 'Replying to')]")) > 0: is_reply = True
-                except:
-                    pass
+                except: pass
 
                 has_media = False
                 try:
-                    if len(a.find_elements(By.XPATH,
-                                           './/div[@data-testid="tweetPhoto"] | .//div[@data-testid="videoPlayer"]')) > 0: has_media = True
-                except:
-                    pass
+                    if len(a.find_elements(By.XPATH, './/div[@data-testid="tweetPhoto"] | .//div[@data-testid="videoPlayer"]')) > 0: has_media = True
+                except: pass
 
                 # Retweet Logic
                 is_retweet = False
@@ -220,7 +237,7 @@ def run_scraper(driver, target_username, mode, search_query, limit_type, max_cou
                             status_text.text(f"Reached date limit ({stop_date}). Stopping.")
                             keep_scrolling = False
                             break
-
+                
                 tweets[tweet_id] = {
                     "id": tweet_id,
                     "author": tweet_author,
@@ -234,14 +251,13 @@ def run_scraper(driver, target_username, mode, search_query, limit_type, max_cou
                 }
                 new_in_batch += 1
                 start_time = time.time()
-
+                
                 if limit_type == "Max N Posts" and len(tweets) >= max_count:
                     status_text.text(f"Reached limit of {max_count} tweets.")
                     keep_scrolling = False
                     break
-            except:
-                continue
-
+            except: continue
+        
         if not keep_scrolling: break
 
         if new_in_batch > 0:
@@ -249,23 +265,22 @@ def run_scraper(driver, target_username, mode, search_query, limit_type, max_cou
             prog_val = min(current_count / (max_count if limit_type == "Max N Posts" else 50), 1.0)
             progress_bar.progress(prog_val)
             status_text.text(f"Collected {current_count} tweets...")
+            consecutive_no_data = 0 # Reset counter
             try:
                 with open(autosave_file, "w", encoding="utf-8") as f:
                     json.dump(list(tweets.values()), f, indent=2, default=str)
-            except:
-                pass
+            except: pass
             time.sleep(random.uniform(2, 4))
         else:
             driver.execute_script("window.scrollBy(0, 500);")
             time.sleep(2)
             consecutive_no_data += 1
-            if len(articles) == 0: break  # Safety break if page is blank
+            if len(articles) == 0: break 
 
         driver.execute_script("window.scrollBy(0, 1000);")
         time.sleep(2)
 
     return list(tweets.values())
-
 
 # ==========================================
 # 3. MAIN APP UI
@@ -276,27 +291,27 @@ tab_scrape, tab_view = st.tabs(["🚀 Scraper Dashboard", "📄 JSON Feed Viewer
 # --- TAB 1: SCRAPER ---
 with tab_scrape:
     st.title("🕵️‍♀️ Twitter Scraper")
-
+    
     col1, col2 = st.columns([1, 2])
     with col1:
         st.subheader("Settings")
         target_user_input = st.text_input("Target Username", "BryceSouve")
         mode = st.radio("Mode", ["Profile Scroll", "Keyword Search"])
-
+        
         search_query = ""
         if mode == "Keyword Search":
             search_query = st.text_input("Keyword", "AI")
             st.caption(f"Searching: from:{target_user_input} {search_query}")
-
+        
         limit_option = st.selectbox("Stop Condition", ["Max N Posts", "Date Cutoff"])
         max_tweets = 50
         stop_date = None
-
+        
         if limit_option == "Max N Posts":
             max_tweets = st.number_input("Max Tweets", 10, 2000, 50)
         else:
             stop_date = st.date_input("Cutoff Date", datetime(2025, 1, 1))
-
+            
         if st.button("Start Scraping", type="primary"):
             if not target_user_input:
                 st.error("Enter a username!")
@@ -308,8 +323,7 @@ with tab_scrape:
                     st.success("Connected!")
                     prog_bar = st.progress(0)
                     stat_text = st.empty()
-                    data = run_scraper(driver, target_user_input, mode, search_query, limit_option, max_tweets,
-                                       stop_date, prog_bar, stat_text)
+                    data = run_scraper(driver, target_user_input, mode, search_query, limit_option, max_tweets, stop_date, prog_bar, stat_text)
                     if data:
                         filename = f"{target_user_input}_archive.json"
                         with open(filename, "w", encoding="utf-8") as f:
@@ -319,50 +333,44 @@ with tab_scrape:
 # --- TAB 2: JSON FEED VIEWER ---
 with tab_view:
     st.header("📱 Feed Viewer")
-
+    
     json_files = load_json_files()
     if not json_files:
         st.warning("No archive files found.")
     else:
         selected_file = st.selectbox("Select Archive File", json_files)
-
+        
         try:
             with open(selected_file, "r", encoding="utf-8") as f:
                 raw_data = json.load(f)
             df = pd.DataFrame(raw_data)
-
+            
             # --- ROBUST REPAIR LOGIC ---
             if "date" not in df.columns and "timestamp" in df.columns:
                 df["date"] = pd.to_datetime(df["timestamp"], errors='coerce').dt.date
             elif "date" in df.columns:
                 df["date"] = pd.to_datetime(df["date"], errors='coerce').dt.date
-
+            
             if "text" not in df.columns: df["text"] = ""
             if "author" not in df.columns:
-                if "username" in df.columns:
-                    df["author"] = df["username"]
-                elif "url" in df.columns:
-                    df["author"] = df["url"].apply(
-                        lambda x: x.split('/')[3] if isinstance(x, str) and len(x.split('/')) > 3 else "Unknown")
-                else:
-                    df["author"] = "Unknown"
-
+                if "username" in df.columns: df["author"] = df["username"]
+                elif "url" in df.columns: df["author"] = df["url"].apply(lambda x: x.split('/')[3] if isinstance(x, str) and len(x.split('/')) > 3 else "Unknown")
+                else: df["author"] = "Unknown"
+            
             inferred_target = selected_file.split("_archive")[0]
             if "scraped_from" not in df.columns:
                 df["scraped_from"] = inferred_target
             # ---------------------------
 
             f_col1, f_col2, f_col3, f_col4 = st.columns([2, 1, 1, 1])
-            with f_col1:
-                keyword = st.text_input("🔍 Filter by Keyword", placeholder="Search text...")
+            with f_col1: keyword = st.text_input("🔍 Filter by Keyword", placeholder="Search text...")
             with f_col2:
                 if "date" in df.columns and not df["date"].isnull().all():
                     min_date, max_date = df["date"].min(), df["date"].max()
                 else:
                     min_date, max_date = datetime.now().date(), datetime.now().date()
                 date_range = st.date_input("📅 Date Window", [min_date, max_date])
-            with f_col3:
-                per_page = st.selectbox("Results/Page", [10, 50, 100], index=0)
+            with f_col3: per_page = st.selectbox("Results/Page", [10, 50, 100], index=0)
 
             filtered_df = df.copy()
             if keyword:
@@ -370,41 +378,40 @@ with tab_view:
             if len(date_range) == 2 and "date" in filtered_df.columns:
                 start_d, end_d = date_range
                 filtered_df = filtered_df[(filtered_df["date"] >= start_d) & (filtered_df["date"] <= end_d)]
-
+            
             total_results = len(filtered_df)
             total_pages = max(1, (total_results // per_page) + (1 if total_results % per_page > 0 else 0))
-            with f_col4:
-                page_num = st.number_input("Page", min_value=1, max_value=total_pages, value=1)
-
+            with f_col4: page_num = st.number_input("Page", min_value=1, max_value=total_pages, value=1)
+            
             st.caption(f"Showing {total_results} tweets found.")
             st.divider()
 
             start_idx = (page_num - 1) * per_page
-            page_data = filtered_df.iloc[start_idx:start_idx + per_page]
+            page_data = filtered_df.iloc[start_idx:start_idx+per_page]
 
             for _, row in page_data.iterrows():
-                # Safe Extraction
+                # Safe Extraction with HTML Escaping
                 author = html.escape(str(row.get('author', 'Unknown')))
                 date_str = str(row.get('date', 'Unknown'))
                 text_content = html.escape(str(row.get('text', '')))
                 url_link = row.get('url', '#')
                 scraped_from = html.escape(str(row.get('scraped_from', inferred_target)))
                 tweet_id = row.get('id', 'Unknown')
-
+                
                 is_retweet = row.get('is_retweet', False)
                 if 'is_retweet' not in row and author.lower() != scraped_from.lower():
                     is_retweet = True
 
                 # Conditional HTML Blocks
                 retweet_div = f'<div class="retweet-context">🔄 {scraped_from} Retweeted</div>' if is_retweet else ""
-
+                
                 badges_html = ""
                 if row.get('is_reply'): badges_html += '<span class="badge badge-reply">Reply</span>'
                 if row.get('has_media'): badges_html += '<span class="badge badge-media">Media</span>'
-
+                
                 badges_div = f'<div class="badges-row">{badges_html}</div>' if badges_html else ""
 
-                # Pure HTML string (No indentation to prevent Markdown interpretation issues)
+                # Card HTML
                 card_html = f"""<div class="tweet-card">{retweet_div}<div class="tweet-header"><div class="tweet-author-block"><span class="tweet-author">{author}</span><span class="tweet-handle">@{author}</span><span>· {date_str}</span></div><a href="{url_link}" target="_blank" class="view-link">View</a></div><div class="tweet-text">{text_content}</div>{badges_div}<div class="tweet-footer">ID: {tweet_id}</div></div>"""
 
                 st.markdown(card_html, unsafe_allow_html=True)
